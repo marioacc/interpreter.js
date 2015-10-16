@@ -1,4 +1,18 @@
 /*Tokens type declarations*/
+var colors = require("colors");
+colors.setTheme({
+  silly: 'rainbow',
+  input: 'grey',
+  verbose: 'cyan',
+  prompt: 'grey',
+  info: 'green',
+  data: 'grey',
+  help: 'cyan',
+  warn: 'yellow',
+  debug: 'blue',
+  error: 'red'
+});
+
 var INTEGER = "INTEGER";
 var PLUS = "PLUS";
 var EOF = "EOF";
@@ -23,9 +37,9 @@ function Interpreter(text) {
     self.current_token;
     //Error handler
     function error (){
-        alert("Cant parse your shit");
+        console.log("Cant parse your shit".error);
     }
-    //Lexical Analyzer 
+    //Lexical Analyzer
     function Tokenizer(){
         //Is pos at the end of text?
         if (self.pos > (text.lenght-1)) {
