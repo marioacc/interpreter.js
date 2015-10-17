@@ -1,5 +1,6 @@
 /*Tokens type declarations*/
 var colors = require("colors");
+var Token = require("./token.js");
 colors.setTheme({
   silly: 'rainbow',
   input: 'grey',
@@ -17,33 +18,30 @@ var INTEGER = "INTEGER";
 var PLUS = "PLUS";
 var EOF = "EOF";
 
-/*Token class*/
-function Token(type, value) {
-    //initializes the token with a type and a value
-           self.type = type;
-           self.value = value;
-    //turns the token to a string format "Token(type,value)"
-        function str(){
-            return "Token(" + this.type + "," + this.value + ")";
-        }
-    }
+
 /*The motherfucking interpreter*/
-function Interpreter(text) {
+var Interpreter= function (text) {
     //This is the client input, must catch it from args.
-    self.text = text;
+    this.text = text;
     //This is a pointer index to text
-    self.pos = 0;
+    this.pos = 0;
     //pointer to the current token being red
-    self.current_token;
-    //Error handler
-    function error (){
-        console.log("Cant parse your shit".error);
+    this.current_token = null;
+};
+//Error handler
+Interpreter.prototype.error= function (){
+    console.log("Cant parse your shit".error);
+};
+//Lexical Analyzer
+Interpreter.prototype.tokenizer= function (){
+    //Is pos at the end of text?
+    text = this.text;
+    if (this.pos > ( text.lenght -1) ) {
+        return new Token(EOF, null);
     }
-    //Lexical Analyzer
-    function Tokenizer(){
-        //Is pos at the end of text?
-        if (self.pos > (text.lenght-1)) {
-            return Token(EOF, none);
-        }
-    }
-}//end of interpreter
+};
+//end of interpreter
+var token = new Token(EOF, null);
+console.log(token.toString());
+var interpreter = new Interpreter("gg");
+interpreter.error();
