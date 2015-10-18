@@ -9,3 +9,4 @@ var Token = function(type, value){
 Token.prototype.toString =function (){
     return "Token("+this.type+", "+this.value+")";
 };
+module.exports = Token;

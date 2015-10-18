@@ -1,6 +1,6 @@
-/*Tokens type declarations*/
+var Interpreter = require("./interpreter.js");
+var readline = require("readline");
 var colors = require("colors");
-var Token = require("./token.js");
 colors.setTheme({
   silly: 'rainbow',
   input: 'grey',
@@ -13,35 +13,19 @@ colors.setTheme({
   debug: 'blue',
   error: 'red'
 });
+//Initializes the readline object, this object read the input users and
+//creates an standart prompt, just to be cool guys.
 
-var INTEGER = "INTEGER";
-var PLUS = "PLUS";
-var EOF = "EOF";
-
-
-/*The motherfucking interpreter*/
-var Interpreter= function (text) {
-    //This is the client input, must catch it from args.
-    this.text = text;
-    //This is a pointer index to text
-    this.pos = 0;
-    //pointer to the current token being red
-    this.current_token = null;
-};
-//Error handler
-Interpreter.prototype.error= function (){
-    console.log("Cant parse your shit".error);
-};
-//Lexical Analyzer
-Interpreter.prototype.tokenizer= function (){
-    //Is pos at the end of text?
-    text = this.text;
-    if (this.pos > ( text.lenght -1) ) {
-        return new Token(EOF, null);
-    }
-};
-//end of interpreter
-var token = new Token(EOF, null);
-console.log(token.toString());
-var interpreter = new Interpreter("gg");
-interpreter.error();
+var rl= readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true
+});
+rl.setPrompt("Interpreter.js>");
+rl.prompt();
+rl.on("line" , function (cmd){
+    var interpreter = new Interpreter(cmd.trim());
+    var result = interpreter.expr();
+    console.log(colors.info(result));
+    rl.prompt();
+});
