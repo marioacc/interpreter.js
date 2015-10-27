@@ -6,7 +6,11 @@ var Exception = require ("./exceptions.js");
 
 var INTEGER = "INTEGER";
 var PLUS = "PLUS";
+var MINUS = "MINUS";
+var MULTIPLICATION = "MULTIPLICATION";
+var DIVISION = "DIVISION";
 var EOF = "EOF";
+
 
 /*The motherfucking interpreter*/
 var Interpreter = function (text) {
@@ -17,42 +21,76 @@ var Interpreter = function (text) {
     this.pos = 0;
     //pointer to the current token being red
     this.current_token = null;
+    this.current_char = this.text[this.pos];
 };
 //Error handler
 Interpreter.prototype.error= function (){
     throw new Exception("Error parsing the statement");
 };
+
+//Advances the this.pos pointer and set the this.current_char variable
+Interpreter.prototype.advance= function(){
+    this.pos += 1;
+    if (this.pos > this.text.length - 1) {
+        this.current_char = undefined;
+    } else {
+        this.current_char = this.text[this.pos];
+    }
+};
+
+//To skips whitespaces
+Interpreter.prototype.skipWhitespace = function(){
+    while (this.current_char !== undefined && this.current_char === " "){
+        this.advance();
+    }
+};
+//Return an integer of n terms
+Interpreter.prototype.integer = function(){
+    var result = "";
+    while (this.current_char !== undefined && !isNaN(this.current_char)){
+        result += this.current_char;
+        this.advance();
+    }
+    return Number(result);
+};
 //Lexical Analyzer
 Interpreter.prototype.tokenizer= function (){
     "use strict";
-    //Is pos at the end of text?
-    var text = this.text;
-    if (this.pos > ( text.length-1)  ) {
-        return new Token(EOF, undefined);
+    //A while method to get all the elements in the statement and make the tokens
+
+    while (this.current_char !== undefined) {
+
+        if (this.current_char === " "){
+            this.skipWhitespace();
+            continue;
+        }
+
+        if (!isNaN(this.current_char)) {
+            return new Token(INTEGER, this.integer());
+        }
+
+        if (this.current_char === "+") {
+            this.advance();
+            return new Token(PLUS,"+");
+        }
+
+        if (this.current_char === "-") {
+            this.advance();
+            return new Token(MINUS,"-");
+        }
+
+        if (this.current_char === "*") {
+            this.advance();
+            return new Token(MULTIPLICATION,"*");
+        }
+
+        if (this.current_char === "/") {
+            this.advance();
+            return new Token(DIVISION,"/");
+        }
+        this.error();
     }
-
-    //get character at position this.pos and decide whta token create
-    //based on the single character
-    var current_char = text[this.pos];
-
-     //if the character is a digit then convert it to
-     //integer, create an INTEGER token, increment this.pos
-     //index to point to the next character after the digit,
-     //and return the INTEGER token
-     if (!isNaN(current_char)) {
-
-        token = new Token(INTEGER, Number(current_char));
-        this.pos += 1;
-        return token;
-     }
-
-     if (current_char == "+"){
-         var token = new Token(PLUS, current_char);
-         this.pos += 1;
-         return token;
-     }
-
-     this.error();
+    return new Token(EOF, undefined);
 
 };
 //Token Verifier
@@ -63,13 +101,21 @@ Interpreter.prototype.eat = function (tokenType){
     //otherwise raise an exception.
     "use strict";
 
-    if (this.current_token.type == tokenType){
+    if (this.current_token.type === tokenType){
         this.current_token = this.tokenizer();
     }else {
         this.error();
     }
 
-}
+};
+//Return an integer value
+Interpreter.prototype.term = function () {
+    // body...
+    var token = this.current_token;
+    this.eat(INTEGER);
+    return token.value;
+
+};
 //Expression Analyzer
 Interpreter.prototype.expr = function (){
     //expr -> INTEGER PLUS INTEGER
@@ -78,26 +124,24 @@ Interpreter.prototype.expr = function (){
     this.current_token = this.tokenizer();
 
     //we expect the current token to be a single-digit integer
-    var left = this.current_token;
-    this.eat(INTEGER)
-
-    //we expect the current token to be a '+' token
-    var op = this.current_token;
-    this.eat(PLUS)
-
-    //we expect the current token to be a single-digit integer
-    var right = this.current_token;
-    this.eat(INTEGER)
-    //after the above call the this.current_token is set to
-    //EOF token
-
-    //at this point INTEGER PLUS INTEGER sequence of tokens
-    //has been successfully found and the method can just
-    //return the result of adding two integers, thus
-    //effectively interpreting client input
-
-    var result = left.value + right.value;
+    var result = this.term();
+    while ([PLUS,MINUS, DIVISION, MULTIPLICATION].indexOf(this.current_token.type) !== -1 ){
+        var token = this.current_token;
+        if (token.type === PLUS) {
+            this.eat(PLUS);
+            result += Number(this.term());
+        }else if (token.type === MINUS) {
+            this.eat(MINUS);
+            result -= Number(this.term());
+        }else if (token.type === MULTIPLICATION) {
+            this.eat(MULTIPLICATION);
+            result *= Number(this.term());
+        }else if (token.type === DIVISION) {
+            this.eat(DIVISION);
+            result /= Number(this.term());
+        }
+    }
     return result;
-}
+};
 
 module.exports =Interpreter;

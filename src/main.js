@@ -18,14 +18,13 @@ colors.setTheme({
 
 var rl= readline.createInterface({
     input: process.stdin,
-    output: process.stdout,
-    terminal: true
+    output: process.stdout
 });
 rl.setPrompt("Interpreter.js>");
 rl.prompt();
-rl.on("line" , function (cmd){
-    var interpreter = new Interpreter(cmd.trim());
+rl.on("line", function (line){
+    var interpreter = new Interpreter(line.trim());
     var result = interpreter.expr();
-    console.log(colors.info(result));
+    console.log(result);
     rl.prompt();
 });
