@@ -13,7 +13,6 @@ var Interpreter = function (text) {
     "use strict";
     //This is the client input, must catch it from args.
     this.text = text;
-
     //This is a pointer index to text
     this.pos = 0;
     //pointer to the current token being red
