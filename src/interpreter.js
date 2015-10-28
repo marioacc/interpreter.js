@@ -9,6 +9,8 @@ var PLUS = "PLUS";
 var MINUS = "MINUS";
 var MULTIPLICATION = "MULTIPLICATION";
 var DIVISION = "DIVISION";
+var MODULE = "MODULE";
+var POWER = "POWER";
 var EOF = "EOF";
 
 
@@ -88,6 +90,10 @@ Interpreter.prototype.tokenizer= function (){
             this.advance();
             return new Token(DIVISION,"/");
         }
+       if (this.current_char === "%") {
+            this.advance();
+            return new Token(MODULE,"%");
+        }
         this.error();
     }
     return new Token(EOF, undefined);
@@ -112,7 +118,7 @@ Interpreter.prototype.eat = function (tokenType){
 Interpreter.prototype.term = function () {
     // body...
     var result = this.factor();
-    while ( [MULTIPLICATION,DIVISION].indexOf(this.current_token.type) !== -1){
+    while ( [MULTIPLICATION,DIVISION,MODULE].indexOf(this.current_token.type) !== -1){
         var token = this.current_token;
         if (token.type === MULTIPLICATION){
             this.eat(MULTIPLICATION);
@@ -120,6 +126,9 @@ Interpreter.prototype.term = function () {
         }else if (token.type === DIVISION) {
             this.eat(DIVISION);
             result/=this.factor();
+        }else if (token.type === MODULE) {
+            this.eat(MODULE);
+            result=result%this.factor();
         }
     }
     return result;
@@ -137,7 +146,7 @@ Interpreter.prototype.expr = function (){
     "use strict";
     this.current_token = this.tokenizer();
 
-    //we expect the current token to be a single-digit integer
+    //we expect the current token to be a digit integer
     var result = this.term();
     while ([PLUS,MINUS].indexOf(this.current_token.type) !== -1 ){
         var token = this.current_token;
@@ -153,6 +162,12 @@ Interpreter.prototype.expr = function (){
         }else if (token.type === DIVISION) {
             this.eat(DIVISION);
             result /= Number(this.term());
+        }else if (token.type === MODULE) {
+            this.eat(MODULE);
+            result = result%(Number(this.term()));
+        }else if (token.type === POWER) {
+            this.eat(POWER);
+            result = Math.pow(result,Number(this.term()));
         }
     }
     return result;
