@@ -11,6 +11,8 @@ var MULTIPLICATION = "MULTIPLICATION";
 var DIVISION = "DIVISION";
 var PARENTOPEN="PARENTOPEN";
 var PARENTCLOSE="PARENTCLOSE";
+var MODULE = "MODULE";
+var POWER = "POWER";
 var EOF = "EOF";
 var PARENTESHIS = [];
 
@@ -20,7 +22,6 @@ var Interpreter = function (text) {
     "use strict";
     //This is the client input, must catch it from args.
     this.text = text;
-
     //This is a pointer index to text
     this.pos = 0;
     //pointer to the current token being red
@@ -100,8 +101,16 @@ Interpreter.prototype.tokenizer= function (){
             this.advance();
             return new Token(PARENTCLOSE,")");
         }
+        if (this.current_char === "%") {
+            this.advance();
+            return new Token(MODULE,"%");
+        }
+        if (this.current_char === "^") {
+            this.advance();
+            return new Token(POWER,"^");
+        }
 
-        this.error("Error Tokenizing the function at line 104");
+        this.error("Error Tokenizing the function");
     }
     return new Token(EOF, undefined);
 
@@ -116,14 +125,13 @@ Interpreter.prototype.eat = function (tokenType){
     if (this.current_token.type === tokenType){
         this.current_token = this.tokenizer();
     }else {
-        this.error("Error eating the token at line 120. this.current_token.type ="+this.current_token.type+" and "+"tokenType ="+tokenType);
+        this.error("Error eating the token at method 'eat'. this.current_token.type ="+this.current_token.type+" and "+"tokenType ="+tokenType);
     }
 
 };
 //Return an integer value
 Interpreter.prototype.term = function () {
     // body...
-
     var result;
     if (this.current_token.type === PARENTOPEN){
         return this.parenthesis();
@@ -131,7 +139,7 @@ Interpreter.prototype.term = function () {
         result = this.factor();
     }
 
-    while ( [MULTIPLICATION,DIVISION].indexOf(this.current_token.type) !== -1){
+    while ( [MULTIPLICATION,DIVISION,MODULE].indexOf(this.current_token.type) !== -1){
         var token = this.current_token;
         if (token.type === MULTIPLICATION){
             this.eat(MULTIPLICATION);
@@ -148,7 +156,38 @@ Interpreter.prototype.term = function () {
             }else{
                 result/=this.factor();
             }
+        }else if (token.type === MODULE) {
+            this.eat(MODULE);
+            if (this.current_token.type === PARENTOPEN){
+                result %= this.parenthesis();
+            }else{
+                result %=this.factor();
+            }
+        }else if (token.type === POWER){
+            return this.superterm();
+            }
 
+        }
+
+    return result;
+};
+//Return an interger value
+Interpreter.prototype.superterm = function () {
+    var result;
+    if (this.current_token.type === PARENTOPEN){
+        return this.parenthesis();
+    }else if (this.current_token.type === INTEGER){
+        result = this.term();
+    }
+    while ( [POWER].indexOf(this.current_token.type) !== -1){
+        var token = this.current_token;
+        if (token.type === POWER){
+            this.eat(POWER);
+            if (this.current_token.type === PARENTOPEN){
+                result = Math.pow(result,this.parenthesis());
+            }else{
+                result =Math.pow(result,this.factor());
+            }
         }
     }
     return result;
@@ -165,7 +204,7 @@ Interpreter.prototype.parenthesis = function(){
         return this.oper();
 };
 //Expression Analyzer
-Interpreter.prototype.oper = function (){
+Interpreter.prototype.oper = function () {
     //expr -> INTEGER PLUS INTEGER
     //set current token to the first token taken from the input
     "use strict";
@@ -174,7 +213,7 @@ Interpreter.prototype.oper = function (){
     if (this.current_token.type === PARENTOPEN){
         result = this.parenthesis();
     }else if (this.current_token.type === INTEGER){
-        result = this.term();
+        result = this.superterm();
     }
     while ([PLUS,MINUS,PARENTCLOSE].indexOf(this.current_token.type) !== -1 ){
         var token = this.current_token;
@@ -193,6 +232,12 @@ Interpreter.prototype.oper = function (){
         }else if (token.type === DIVISION) {
             this.eat(DIVISION);
             result /= Number(this.term());
+        }else if (token.type === MODULE) {
+            this.eat(MODULE);
+            result = result%(Number(this.term()));
+        }else if (token.type === POWER) {
+            this.eat(POWER);
+            result = Math.pow(result,Number(this.superterm()));
         }
     }
     return result;
