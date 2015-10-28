@@ -23,7 +23,7 @@ var rl= readline.createInterface({
 rl.setPrompt("Interpreter.js>");
 rl.prompt();
 rl.on("line", function (line){
-    var interpreter = new Interpreter(line.trim());
+    var interpreter = new Interpreter(line);
     var result = interpreter.expr();
     console.log(result);
     rl.prompt();

@@ -9,7 +9,10 @@ var PLUS = "PLUS";
 var MINUS = "MINUS";
 var MULTIPLICATION = "MULTIPLICATION";
 var DIVISION = "DIVISION";
+var PARENTOPEN="PARENTOPEN";
+var PARENTCLOSE="PARENTCLOSE";
 var EOF = "EOF";
+var PARENTESHIS = [];
 
 
 /*The motherfucking interpreter*/
@@ -25,8 +28,8 @@ var Interpreter = function (text) {
     this.current_char = this.text[this.pos];
 };
 //Error handler
-Interpreter.prototype.error= function (){
-    throw new Exception("Error parsing the statement");
+Interpreter.prototype.error= function (message){
+    throw new Exception(message);
 };
 
 //Advances the this.pos pointer and set the this.current_char variable
@@ -89,7 +92,16 @@ Interpreter.prototype.tokenizer= function (){
             this.advance();
             return new Token(DIVISION,"/");
         }
-        this.error();
+        if (this.current_char === "(") {
+            this.advance();
+            return new Token(PARENTOPEN,"(");
+        }
+        if (this.current_char === ")") {
+            this.advance();
+            return new Token(PARENTCLOSE,")");
+        }
+
+        this.error("Error Tokenizing the function at line 104");
     }
     return new Token(EOF, undefined);
 
@@ -101,26 +113,42 @@ Interpreter.prototype.eat = function (tokenType){
     //and assign the next token to the this.current_token,
     //otherwise raise an exception.
     "use strict";
-
     if (this.current_token.type === tokenType){
         this.current_token = this.tokenizer();
     }else {
-        this.error();
+        this.error("Error eating the token at line 120. this.current_token.type ="+this.current_token.type+" and "+"tokenType ="+tokenType);
     }
 
 };
 //Return an integer value
 Interpreter.prototype.term = function () {
     // body...
-    var result = this.factor();
+
+    var result;
+    if (this.current_token.type === PARENTOPEN){
+        return this.parenthesis();
+    }else if (this.current_token.type === INTEGER){
+        result = this.factor();
+    }
+
     while ( [MULTIPLICATION,DIVISION].indexOf(this.current_token.type) !== -1){
         var token = this.current_token;
         if (token.type === MULTIPLICATION){
             this.eat(MULTIPLICATION);
-            result*=this.factor();
+            if (this.current_token.type === PARENTOPEN){
+                result *= this.parenthesis();
+            }else{
+                result*=this.factor();
+            }
+
         }else if (token.type === DIVISION) {
             this.eat(DIVISION);
-            result/=this.factor();
+            if (this.current_token.type === PARENTOPEN){
+                result /= this.parenthesis();
+            }else{
+                result/=this.factor();
+            }
+
         }
     }
     return result;
@@ -131,17 +159,28 @@ Interpreter.prototype.factor = function () {
     this.eat(INTEGER);
     return token.value;
 };
+Interpreter.prototype.parenthesis = function(){
+        PARENTESHIS.push(this.current_token);
+        this.eat(PARENTOPEN);
+        return this.oper();
+};
 //Expression Analyzer
-Interpreter.prototype.expr = function (){
+Interpreter.prototype.oper = function (){
     //expr -> INTEGER PLUS INTEGER
     //set current token to the first token taken from the input
     "use strict";
-    this.current_token = this.tokenizer();
-
     //we expect the current token to be a single-digit integer
-    var result = this.term();
-    while ([PLUS,MINUS].indexOf(this.current_token.type) !== -1 ){
+    var result;
+    if (this.current_token.type === PARENTOPEN){
+        result = this.parenthesis();
+    }else if (this.current_token.type === INTEGER){
+        result = this.term();
+    }
+    while ([PLUS,MINUS,PARENTCLOSE].indexOf(this.current_token.type) !== -1 ){
         var token = this.current_token;
+        if (token.type === PARENTCLOSE){
+            this.eat(PARENTCLOSE);
+        }
         if (token.type === PLUS) {
             this.eat(PLUS);
             result += Number(this.term());
@@ -157,6 +196,16 @@ Interpreter.prototype.expr = function (){
         }
     }
     return result;
+};
+Interpreter.prototype.expr = function (){
+    //expr -> INTEGER PLUS INTEGER
+    //set current token to the first token taken from the input
+    "use strict";
+    this.current_token = this.tokenizer();
+
+    if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER){
+        return this.oper();
+    }
 };
 
 module.exports =Interpreter;
