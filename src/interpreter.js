@@ -90,9 +90,13 @@ Interpreter.prototype.tokenizer= function (){
             this.advance();
             return new Token(DIVISION,"/");
         }
-       if (this.current_char === "%") {
+        if (this.current_char === "%") {
             this.advance();
             return new Token(MODULE,"%");
+        }
+        if (this.current_char === "^") {
+            this.advance();
+            return new Token(POWER,"^");
         }
         this.error();
     }
@@ -133,6 +137,18 @@ Interpreter.prototype.term = function () {
     }
     return result;
 };
+//Return an interger value
+Interpreter.prototype.superterm = function () {
+     var result = this.term();
+    while ( [POWER].indexOf(this.current_token.type) !== -1){
+        var token = this.current_token;
+        if (token.type === POWER){
+            this.eat(POWER);
+            result=Math.pow(result,this.factor());
+        }
+    }
+    return result;
+}
 //Factor = integer
 Interpreter.prototype.factor = function () {
     var token = this.current_token;
@@ -147,7 +163,7 @@ Interpreter.prototype.expr = function (){
     this.current_token = this.tokenizer();
 
     //we expect the current token to be a digit integer
-    var result = this.term();
+    var result = this.superterm();
     while ([PLUS,MINUS].indexOf(this.current_token.type) !== -1 ){
         var token = this.current_token;
         if (token.type === PLUS) {
