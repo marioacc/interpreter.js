@@ -111,10 +111,24 @@ Interpreter.prototype.eat = function (tokenType){
 //Return an integer value
 Interpreter.prototype.term = function () {
     // body...
+    var result = this.factor();
+    while ( [MULTIPLICATION,DIVISION].indexOf(this.current_token.type) !== -1){
+        var token = this.current_token;
+        if (token.type === MULTIPLICATION){
+            this.eat(MULTIPLICATION);
+            result*=this.factor();
+        }else if (token.type === DIVISION) {
+            this.eat(DIVISION);
+            result/=this.factor();
+        }
+    }
+    return result;
+};
+//Factor = integer
+Interpreter.prototype.factor = function () {
     var token = this.current_token;
     this.eat(INTEGER);
     return token.value;
-
 };
 //Expression Analyzer
 Interpreter.prototype.expr = function (){
@@ -125,7 +139,7 @@ Interpreter.prototype.expr = function (){
 
     //we expect the current token to be a single-digit integer
     var result = this.term();
-    while ([PLUS,MINUS, DIVISION, MULTIPLICATION].indexOf(this.current_token.type) !== -1 ){
+    while ([PLUS,MINUS].indexOf(this.current_token.type) !== -1 ){
         var token = this.current_token;
         if (token.type === PLUS) {
             this.eat(PLUS);
