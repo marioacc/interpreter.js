@@ -13,6 +13,7 @@ var PARENTCLOSE="PARENTCLOSE";
 var MODULE = "MODULE";
 var POWER = "POWER";
 var EOF = "EOF";
+<<<<<<< HEAD
 var VARDEF = "VARDEF";
 var VARASS = "VARASS";
 var VAR = "VAR";
@@ -24,6 +25,8 @@ var varstack= new Array();
 var var_reserved = ["=", "var"];
 var cs_reserved = ["if", "else", "while", "for"]; 
 var RESERVED = [var_reserved,cs_reserved];
+var IF="IF";
+
 
 
 /*The motherfucking interpreter*/
@@ -206,6 +209,11 @@ Interpreter.prototype.tokenizer= function (){
             return new Token(VAR, this.getVarValue());
         }
 
+        if (this.text.substr(this.pos,2)==="if"){
+            this.advance(2);
+            return new Token(IF,"if");
+        }
+
         this.error("Error Tokenizing the function");
     }
     return new Token(EOF, undefined);
@@ -354,6 +362,8 @@ Interpreter.prototype.expr = function (){
    {
     if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER || this.current_token.type === VAR ){
         return this.oper();
+    } else if (this.current_token.type === IF) {
+        console.log(this.current_char);
     }
    if(this.current_token.type === VARDEF){
       console.log("VARDEF token");
