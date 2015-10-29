@@ -204,6 +204,11 @@ Interpreter.prototype.tokenizer= function (){
             return new Token(INTEGER, integer);
         }
 
+        if (this.current_char===","){
+            this.advance();
+            return Token (COMA,",");
+        }
+
         if (this.current_char === "+") {
             this.advance();
             return new Token(PLUS,"+");
@@ -559,7 +564,47 @@ Interpreter.prototype.while = function (first_argument) {
     }
 };
 Interpreter.prototype.for = function (){
+    console.log("asdasdasd"+this.current_token.type);
     this.eat(FOR);
+    if (this.current_token.type===PARENTOPEN){
+        var statementPosition = this.pos;
+        var statementToken= this.current_token;
+        var statementChar = this.current_char;
+        this.eat(PARENTOPEN);
+        while (this.oper()){
+            this.eat(COMA);
+            this.oper();
+            this.eat(PARENTCLOSE);
+            if (PARENTESHIS.length !== 0){
+                this.error("The for statement has no ')'");
+            }else{
+                this.eat(BRACKETOPEN);
+                while (this.current_token.type !== BRACKETCLOSE){
+                    if (this.current_token.type === VARASS){
+                        this.varass();
+                        this.eat(END_STATEMENT);
+                    }else if (this.current_token.type === VARDEF) {
+                        this.vardef();
+                        this.eat(END_STATEMENT);
+                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN) {
+                        console.log(this.oper());
+                        this.eat(END_STATEMENT);
+                    }else if (this.current_token.type === WHILE){
+                        this.while();
+                    }else if (this.current_token.type ===IF) {
+                        this.constm();
+                    }
+                }
+                this.eat(BRACKETCLOSE);
+                this.pos= statementPosition;
+                this.current_token= statementToken;
+                this.current_char= statementChar;
+            }
+        }
+    }
+    else {
+        this.error("The while statements have not '( '");
+    }
 };
 
 Interpreter.prototype.expr = function (){
@@ -568,7 +613,7 @@ Interpreter.prototype.expr = function (){
     "use strict";
     this.current_token = this.tokenizer();
     while (this.current_token.type !== EOF) {
-
+        console.log(this.current_token.type);
         if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER || this.current_token.type === VAR ){
             console.log(this.oper());
         } else if (this.current_token.type === IF) {
