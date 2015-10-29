@@ -151,24 +151,23 @@ Interpreter.prototype.varass = function (varname) {
 };
 //Read var value
 Interpreter.prototype.getVarValue = function() {
-   var variable_name;
-   while (isNaN(this.current_char) && this.current_char !== undefined){
-      variable_name = this.current_char;
-      this.advance();
-   }
+   variable_name = this.current_char;
    for (var i = 0, len = varstack.length; i < len; i++) {
       if(varstack[i].name === variable_name){
          return varstack[i].value;
       }
    }
+
+} ;
+
    /*For chrome testing you can use:
    varstack.prototype.forEach(function(element, index, array){
       if(element === variable_name){
          return varstack[index].value;
       }
    });*/
-   this.eat(VAR);
-};
+   //this.eat(VAR);
+
 //Look for already declared variable and return tru if exists of varstack
 Interpreter.prototype.isOnVarstack = function (varname) {
    for (var i = 0, len = varstack.length; i < len; i++) {
@@ -570,13 +569,13 @@ Interpreter.prototype.expr = function (){
     if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER || this.current_token.type === VAR ){
         return this.oper();
     } else if (this.current_token.type === IF) {
+
         this.constm();
     }else if (this.current_token.type === WHILE){
         return this.while();
     }else if(this.current_token.type === VARDEF){
-      console.log("VARDEF token");
       this.vardef();
-      this.expr();
+
   }else if(this.current_token.type === VARASS){
       this.varass(undefined);
       console(this.expr());
