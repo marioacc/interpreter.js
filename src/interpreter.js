@@ -1,8 +1,7 @@
 
 var Token = require("./token.js");
 var Exception = require ("./exceptions.js");
-
-
+var variable = require ("./variable.js");
 
 var INTEGER = "INTEGER";
 var PLUS = "PLUS";
@@ -14,7 +13,17 @@ var PARENTCLOSE="PARENTCLOSE";
 var MODULE = "MODULE";
 var POWER = "POWER";
 var EOF = "EOF";
-var PARENTESHIS = [];
+var VARDEF = "VARDEF";
+var VARASS = "VARASS";
+var VAR = "VAR";
+var END_STATEMENT= "END_STATEMENT";
+var PARENTESHIS = []; //parenteSHIS? jajaja
+//variables super awsome stack
+var varstack= new Array();
+//RESERVED DICTTIONARIES
+var var_reserved = ["=", "var"];
+var cs_reserved = ["if", "else", "while", "for"]; 
+var RESERVED = [var_reserved,cs_reserved];
 
 
 /*The motherfucking interpreter*/
@@ -34,14 +43,18 @@ Interpreter.prototype.error= function (message){
 };
 
 //Advances the this.pos pointer and set the this.current_char variable
-Interpreter.prototype.advance= function(){
-    this.pos += 1;
+Interpreter.prototype.advance= function(steps){
+    if (steps !== undefined){
+        this.pos+=steps;
+    }else{
+        this.pos += 1;
+    }
     if (this.pos > this.text.length - 1) {
         this.current_char = undefined;
     } else {
         this.current_char = this.text[this.pos];
     }
-};
+}; 
 
 //To skips whitespaces
 Interpreter.prototype.skipWhitespace = function(){
@@ -58,13 +71,86 @@ Interpreter.prototype.integer = function(){
     }
     return Number(result);
 };
+//Read variable definitions
+Interpreter.prototype.vardef = function() {
+   var variable_name = "";
+   while (this.current_char !== undefined && isNaN(this.current_char) || this.current_char===" ")
+   {
+      if(this.current_char === " "){this.skipWhitespace(); continue;} 
+      if(this.current_char === "=" && this.current_char!== ""){
+         if(RESERVED.indexOf(variable_name) === -1){
+            var this_new_var = new variable(variable_name, undefined);
+            varstack.push(this_new_var);
+            this.advance();
+            this.varass(this_new_var.name);
+            this.eat(VARDEF);
+            return this_new_var.name;
+            console.log("New variable: " + this_new_var.name+ "created successfully");
+         }else {this.error("You used a reserved word, dont be that guy plz: Line 76");}
+      }
+      variable_name += this.current_char;
+      this.advance();
+      if(this.current_char === ";"){
+         this.advance();
+         break; 
+      } 
+   }
+   if(RESERVED.indexOf(variable_name) === -1){
+      var this_new_var = new variable(variable_name, undefined);
+      varstack.push(this_new_var);
+      this.advance();
+      this.eat(VARDEF);
+      return this_new_var.name;
+      console.log("New variable: " + this_new_var.name+ "created successfully");
+   }else {this.error("U used a reserved word man, plz dont be an ass...Line 93");}
+   this.eat(VARDEF);
+
+};
+//Read variable assigination 
+Interpreter.prototype.varass = function (varname) {
+   var variable_value = this.integer();
+   for (var i = 0, len = varstack.length; i < len; i++) {
+      if(varstack[i].name === varname){
+         varstack[i].value =variable_value;
+      }
+   }/*for Chrome testing you can use:
+   varstack.prototype.forEach(function (element, index, array) {
+      if(element === varname){
+         varstack[index].value = variable_value;
+      }
+   });*/
+};
+//Read var value
+Interpreter.prototype.getVarValue = function() {
+   var variable_name;
+   while (isNaN(this.current_char) && this.current_char !== undefined){
+      variable_name = this.current_char; 
+      this.advance();
+   }
+   for (var i = 0, len = varstack.length; i < len; i++) {
+      if(varstack[i].name === variable_name){
+         return varstack[i].value;
+      }
+   } 
+   /*For chrome testing you can use:
+   varstack.prototype.forEach(function(element, index, array){
+      if(element === variable_name){
+         return varstack[index].value;
+      }
+   });*/
+   this.eat(VAR);
+};
 //Lexical Analyzer
 Interpreter.prototype.tokenizer= function (){
     "use strict";
     //A while method to get all the elements in the statement and make the tokens
-
+   var regex_varass = /[a-z]" "*=/;
     while (this.current_char !== undefined) {
-
+        
+       if(this.current_char === ";"){
+            return new Token(END_STATEMENT, ";");
+         }
+       
         if (this.current_char === " "){
             this.skipWhitespace();
             continue;
@@ -109,6 +195,16 @@ Interpreter.prototype.tokenizer= function (){
             this.advance();
             return new Token(POWER,"^");
         }
+        if (this.text.substr(this.pos,3)==="var"){
+            this.advance(3);
+            return new Token(VARDEF, "vardef");
+        }
+       if(regex_varass.test(this.text.substr(this.pos,3))){
+            return new Token (VARASS, "varass"); 
+       }
+        if (isNaN(this.current_char) && this.current_char !==undefined){
+            return new Token(VAR, this.getVarValue());
+        }
 
         this.error("Error Tokenizing the function");
     }
@@ -135,10 +231,10 @@ Interpreter.prototype.term = function () {
     var result;
     if (this.current_token.type === PARENTOPEN){
         return this.parenthesis();
-    }else if (this.current_token.type === INTEGER){
+    }else if (this.current_token.type === INTEGER || this.current_token.type === VAR){
         result = this.factor();
     }
-
+  
     while ( [MULTIPLICATION,DIVISION,MODULE].indexOf(this.current_token.type) !== -1){
         var token = this.current_token;
         if (token.type === MULTIPLICATION){
@@ -192,11 +288,19 @@ Interpreter.prototype.superterm = function () {
     }
     return result;
 };
-//Factor = integer
+//Factor = integer or var
 Interpreter.prototype.factor = function () {
     var token = this.current_token;
-    this.eat(INTEGER);
-    return token.value;
+   if(this.current_token.type === INTEGER){
+       this.eat(INTEGER);
+       return token.value;
+   }
+   if(this.current_token.type === VAR){
+      var token_var = token.value;
+      this.eat(VAR);
+      return token_var;
+   }
+   
 };
 Interpreter.prototype.parenthesis = function(){
         PARENTESHIS.push(this.current_token);
@@ -247,10 +351,22 @@ Interpreter.prototype.expr = function (){
     //set current token to the first token taken from the input
     "use strict";
     this.current_token = this.tokenizer();
-
-    if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER){
+   {
+    if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER || this.current_token.type === VAR ){
         return this.oper();
     }
+   if(this.current_token.type === VARDEF){
+      console.log("VARDEF token");
+      this.vardef();
+   }
+   if(this.current_token.type === VARASS){
+      this.varass();
+   }
+   if(this.current_token.type === END_STATEMENT){
+      this.advance();
+      return this.expr();
+   }
+   }
 };
 
 module.exports =Interpreter;
