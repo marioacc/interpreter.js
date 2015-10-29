@@ -1,8 +1,7 @@
 
 var Token = require("./token.js");
 var Exception = require ("./exceptions.js");
-
-
+var variable = require ("./variable.js");
 
 var INTEGER = "INTEGER";
 var PLUS = "PLUS";
@@ -14,7 +13,6 @@ var PARENTCLOSE="PARENTCLOSE";
 var MODULE = "MODULE";
 var POWER = "POWER";
 var EOF = "EOF";
-var PARENTESHIS = [];
 var IF="IF",
     ELSE="ELSE",
     WHILE ="WHILE",
@@ -28,6 +26,18 @@ var IF="IF",
     BRACKETCLOSE = "BRACKETCLOSE",
     FOR = "FOR",
     COMA = "COMA";
+var VARDEF = "VARDEF";
+var VARASS = "VARASS";
+var VAR = "VAR";
+var END_STATEMENT= "END_STATEMENT";
+var PARENTESHIS = []; //parenteSHIS? jajaja
+//variables super awsome stack
+var varstack= new Array();
+//RESERVED DICTTIONARIES
+var var_reserved = ["=", "var"];
+var cs_reserved = ["if", "else", "while", "for"];
+var RESERVED = [var_reserved,cs_reserved];
+
 
 
 /*The motherfucking interpreter*/
@@ -62,33 +72,109 @@ Interpreter.prototype.advance= function(steps){
 
 //To skips whitespaces
 Interpreter.prototype.skipWhitespace = function(){
-    while (this.current_char !== undefined && this.current_char === " "){
+    while (this.current_char !== undefined && /\s/.test(this.current_char)){
         this.advance();
     }
 };
 //Return an integer of n terms
 Interpreter.prototype.integer = function(){
     var result = "";
-    while (this.current_char !== undefined && !isNaN(this.current_char)){
+    while (/^\d+$/.test(this.current_char)){
         result += this.current_char;
         this.advance();
     }
     return Number(result);
 };
+//Read variable definitions
+Interpreter.prototype.vardef = function() {
+   var variable_name = "";
+   while (this.current_char !== undefined && isNaN(this.current_char) || this.current_char===" ")
+   {
+      if(this.current_char === " "){this.skipWhitespace(); continue;}
+      if(this.current_char === "=" && this.current_char!== ""){
+         if(RESERVED.indexOf(variable_name) === -1){
+            var this_new_var = new variable(variable_name, undefined);
+            varstack.push(this_new_var);
+            this.advance();
+            this.varass(this_new_var.name);
+            this.eat(VARDEF);
+            return this_new_var.name;
+            console.log("New variable: " + this_new_var.name+ "created successfully");
+         }else {this.error("You used a reserved word, dont be that guy plz: Line 76");}
+      }
+      variable_name += this.current_char;
+      this.advance();
+      if(this.current_char === ";"){
+         this.advance();
+         break;
+      }
+   }
+   if(RESERVED.indexOf(variable_name) === -1){
+      var this_new_var = new variable(variable_name, undefined);
+      varstack.push(this_new_var);
+      this.advance();
+      this.eat(VARDEF);
+      return this_new_var.name;
+      console.log("New variable: " + this_new_var.name+ "created successfully");
+   }else {this.error("U used a reserved word man, plz dont be an ass...Line 93");}
+   this.eat(VARDEF);
+
+};
+//Read variable assigination
+Interpreter.prototype.varass = function (varname) {
+   var variable_value = this.integer();
+   for (var i = 0, len = varstack.length; i < len; i++) {
+      if(varstack[i].name === varname){
+         varstack[i].value =variable_value;
+      }
+   }/*for Chrome testing you can use:
+   varstack.prototype.forEach(function (element, index, array) {
+      if(element === varname){
+         varstack[index].value = variable_value;
+      }
+   });*/
+};
+//Read var value
+Interpreter.prototype.getVarValue = function() {
+   var variable_name;
+   while (isNaN(this.current_char) && this.current_char !== undefined){
+      variable_name = this.current_char;
+      this.advance();
+   }
+   for (var i = 0, len = varstack.length; i < len; i++) {
+      if(varstack[i].name === variable_name){
+         return varstack[i].value;
+      }
+   }
+   /*For chrome testing you can use:
+   varstack.prototype.forEach(function(element, index, array){
+      if(element === variable_name){
+         return varstack[index].value;
+      }
+   });*/
+   this.eat(VAR);
+};
 //Lexical Analyzer
 Interpreter.prototype.tokenizer= function (){
     "use strict";
     //A while method to get all the elements in the statement and make the tokens
-
+   var regex_varass = /[a-z]" "*=/;
     while (this.current_char !== undefined) {
 
-        if (this.current_char === " "){
+       if(this.current_char === ";"){
+           this.advance();
+            return new Token(END_STATEMENT, ";");
+         }
+
+        if (/\s/.test(this.current_char)){
             this.skipWhitespace();
             continue;
         }
 
-        if (!isNaN(this.current_char)) {
-            return new Token(INTEGER, this.integer());
+        if ( /^\d+$/.test(this.current_char)) {
+            var integer = Number(this.current_char)
+            this.advance()
+            return new Token(INTEGER, integer);
         }
 
         if (this.current_char === "+") {
@@ -146,6 +232,14 @@ Interpreter.prototype.tokenizer= function (){
             this.advance(3);
             return new Token(AND,"and");
         }
+        if (this.text.substr(this.pos,3)==="var"){
+            this.advance(3);
+            return new Token(VARDEF, "vardef");
+        }
+       if(regex_varass.test(this.text.substr(this.pos,3))){
+            return new Token (VARASS, "varass");
+       }
+
         if (this.text.substr(this.pos,2)==="if"){
             this.advance(2);
             return new Token(IF,"if");
@@ -166,8 +260,11 @@ Interpreter.prototype.tokenizer= function (){
             this.advance();
             return new Token(BRACKETCLOSE,"}");
         }
+        if (isNaN(this.current_char) && this.current_char !==undefined){
+            return new Token(VAR, this.getVarValue());
+        }
 
-        this.error("Error Tokenizing the function");
+        this.error("Error Tokenizing the function. The this.current_char is "+this.current_char);
     }
     return new Token(EOF, undefined);
 
@@ -180,6 +277,7 @@ Interpreter.prototype.eat = function (tokenType){
     //otherwise raise an exception.
     "use strict";
     if (this.current_token.type === tokenType){
+
         this.current_token = this.tokenizer();
     }else {
         this.error("Error eating the token at method 'eat'. this.current_token.type ="+this.current_token.type+" and "+"tokenType ="+tokenType);
@@ -192,7 +290,7 @@ Interpreter.prototype.term = function () {
     var result;
     if (this.current_token.type === PARENTOPEN){
         return this.parenthesis();
-    }else if (this.current_token.type === INTEGER){
+    }else if (this.current_token.type === INTEGER || this.current_token.type === VAR){
         result = this.factor();
     }
 
@@ -249,11 +347,18 @@ Interpreter.prototype.superterm = function () {
     }
     return result;
 };
-//Factor = integer
+//Factor = integer or var
 Interpreter.prototype.factor = function () {
     var token = this.current_token;
-    this.eat(INTEGER);
-    return token.value;
+   if(this.current_token.type === INTEGER){;
+       this.eat(INTEGER);
+       return token.value;
+   }else if(this.current_token.type === VAR){
+      var token_var = token.value;
+      this.eat(VAR);
+      return token_var;
+   }
+
 };
 Interpreter.prototype.parenthesis = function(){
         PARENTESHIS.push(this.current_token);
@@ -327,27 +432,39 @@ Interpreter.prototype.oper = function () {
 };
 Interpreter.prototype.constm = function(){
     this.eat(IF);
+
     if (this.current_token.type===PARENTOPEN){
-        if (this.parenthesis()){
+        var statement=this.parenthesis();
+        if (statement){
             if (PARENTESHIS.length !== 0){
                 this.error("The if statement has no ')'");
 
             }else{
-                this.eat("BRACKETOPEN");
+
+                this.eat(BRACKETOPEN);
                 while (this.current_token.type !== BRACKETCLOSE){
-                    console.log(this.oper());
                     console.log(this.current_char);
+                    if (this.current_token.type === VARASS){
+                        this.varass();
+                        this.eat(END_STATEMENT);
+
+                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN) {
+                        console.log(this.oper());
+                        this.eat(END_STATEMENT);
+                    }
+
                 }
-                this.eat("BRACKETCLOSE");
+                this.eat(BRACKETCLOSE);
 
             }
-            if (this.current_token.type === ELSE) {
+            if (!statement && this.current_token.type === ELSE) {
                 this.eat(ELSE);
-                this.eat("BRACKETOPEN");
-                while (this.current_token.type !== EOF || this.current_token.type !== BRACKETCLOSE){
+                this.eat(BRACKETOPEN);
+                while (this.current_token.type !== BRACKETCLOSE){
                     console.log(this.oper());
+                    this.eat(END_STATEMENT);
                 }
-                this.eat("BRACKETCLOSE");
+                this.eat(BRACKETCLOSE);
             }
         }
     }
@@ -360,26 +477,37 @@ Interpreter.prototype.while = function (first_argument) {
     this.eat(WHILE);
     if (this.current_token.type===PARENTOPEN){
         var statementPosition = this.pos;
-        while (this.parenthesis()){
+        var statementToken= this.current_token;
+        var statementChar = this.current_char;
+        console.log(statementPosition+" "+statementToken);
+        while (true){
+            console.log("char is : "+this.current_char);
+            console.log(this.parenthesis());
             if (PARENTESHIS.length !== 0){
-                this.error("The if statement has no ')'");
+                this.error("The while statement has no ')'");
             }else{
-                this.eat("BRACKETOPEN");
-
+                this.eat(BRACKETOPEN);
                 while (this.current_token.type !== BRACKETCLOSE){
-                    console.log(this.oper());
-                    console.log(this.current_char);
+                    if (this.current_token.type === VARASS){
+                        this.varass();
+                        this.eat(END_STATEMENT);
+                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN) {
+                        console.log(this.oper());
+                        this.eat(END_STATEMENT);
+                    }
                 }
-                this.pos= statementPosition;
                 this.eat("BRACKETCLOSE");
+                this.pos= statementPosition;
+                this.current_token= statementToken;
+                this.current_char= statementChar;
             }
         }
     }
     else {
-        this.error("The if statements have not '( '");
+        this.error("The while statements have not '( '");
     }
 };
-interpreter.prototype.for = function (){
+Interpreter.prototype.for = function (){
     this.eat(FOR);
     if (this.current_token.type===PARENTOPEN){
         var statementPosition = this.pos;
@@ -401,20 +529,32 @@ interpreter.prototype.for = function (){
     else {
         this.error("The if statements have not '( '");
     }
-}
+};
 Interpreter.prototype.expr = function (){
     //expr -> INTEGER PLUS INTEGER
     //set current token to the first token taken from the input
     "use strict";
     this.current_token = this.tokenizer();
-
-    if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER){
+   {
+    if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER || this.current_token.type === VAR ){
         return this.oper();
     } else if (this.current_token.type === IF) {
         this.constm();
     }else if (this.current_token.type === WHILE){
         return this.while();
     }
+   if(this.current_token.type === VARDEF){
+      console.log("VARDEF token");
+      this.vardef();
+   }
+   if(this.current_token.type === VARASS){
+      this.varass();
+   }
+   if(this.current_token.type === END_STATEMENT){
+      this.advance();
+      return this.expr();
+   }
+   }
 };
 
 module.exports =Interpreter;
