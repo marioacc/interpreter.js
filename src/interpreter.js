@@ -15,7 +15,19 @@ var MODULE = "MODULE";
 var POWER = "POWER";
 var EOF = "EOF";
 var PARENTESHIS = [];
-var IF="IF";
+var IF="IF",
+    ELSE="ELSE",
+    WHILE ="WHILE",
+    GT="GT",
+    EQUALS="EQUALS",
+    LT = "LT",
+    DIFFERENT ="DIFFERENT",
+    AND = "AND",
+    OR ="OR",
+    BRACKETOPEN = "BRACKETOPEN",
+    BRACKETCLOSE = "BRACKETCLOSE",
+    FOR = "FOR",
+    COMA = "COMA";
 
 
 /*The motherfucking interpreter*/
@@ -114,9 +126,45 @@ Interpreter.prototype.tokenizer= function (){
             this.advance();
             return new Token(POWER,"^");
         }
+        if(this.current_char ===">"){
+            this.advance();
+            return new Token(GT,">");
+        }
+        if(this.text.substr(this.pos,2) === "=="){
+            this.advance(2);
+            return new Token(EQUALS,"==");
+        }
+        if(this.current_char === "<"){
+            this.advance();
+            return new Token(LT,"<");
+        }
+        if (this.text.substr(this.pos,2)==="or"){
+            this.advance(2);
+            return new Token(OR,"or");
+        }
+        if (this.text.substr(this.pos,3)==="and"){
+            this.advance(3);
+            return new Token(AND,"and");
+        }
         if (this.text.substr(this.pos,2)==="if"){
             this.advance(2);
             return new Token(IF,"if");
+        }
+        if (this.text.substr(this.pos,4)==="else"){
+            this.advance(4);
+            return new Token(ELSE,"else");
+        }
+        if (this.text.substr(this.pos,5)==="while"){
+            this.advance(5);
+            return new Token(WHILE,"while");
+        }
+        if (this.current_char==="{"){
+            this.advance();
+            return new Token(BRACKETOPEN,"{");
+        }
+        if (this.current_char==="}"){
+            this.advance();
+            return new Token(BRACKETCLOSE,"}");
         }
 
         this.error("Error Tokenizing the function");
@@ -224,10 +272,12 @@ Interpreter.prototype.oper = function () {
     }else if (this.current_token.type === INTEGER){
         result = this.superterm();
     }
+    var token = this.current_token;
     while ([PLUS,MINUS,PARENTCLOSE].indexOf(this.current_token.type) !== -1 ){
-        var token = this.current_token;
+
         if (token.type === PARENTCLOSE){
             this.eat(PARENTCLOSE);
+            PARENTESHIS.pop();
         }
         if (token.type === PLUS) {
             this.eat(PLUS);
@@ -248,9 +298,110 @@ Interpreter.prototype.oper = function () {
             this.eat(POWER);
             result = Math.pow(result,Number(this.superterm()));
         }
+
+    }
+    while ([LT,GT,EQUALS,AND,OR].indexOf(this.current_token.type) !== -1 ) {
+        token = this.current_token;
+        if (token.type === PARENTCLOSE){
+            this.eat(PARENTCLOSE);
+            PARENTESHIS.pop();
+        }
+        if (token.type === LT) {
+            this.eat(LT);
+            return result < this.oper();
+        }else if (token.type === GT) {
+            this.eat(GT);
+            return result > this.oper();
+        }else if (token.type === EQUALS) {
+            this.eat(EQUALS);
+            return result == this.oper();
+        }else if (token.type === OR) {
+            this.eat(OR);
+            return result || this.oper();
+        }else if (token.type === AND) {
+            this.eat(AND);
+            return result && this.oper();
+        }
     }
     return result;
 };
+Interpreter.prototype.constm = function(){
+    this.eat(IF);
+    if (this.current_token.type===PARENTOPEN){
+        if (this.parenthesis()){
+            if (PARENTESHIS.length !== 0){
+                this.error("The if statement has no ')'");
+
+            }else{
+                this.eat("BRACKETOPEN");
+                while (this.current_token.type !== BRACKETCLOSE){
+                    console.log(this.oper());
+                    console.log(this.current_char);
+                }
+                this.eat("BRACKETCLOSE");
+
+            }
+            if (this.current_token.type === ELSE) {
+                this.eat(ELSE);
+                this.eat("BRACKETOPEN");
+                while (this.current_token.type !== EOF || this.current_token.type !== BRACKETCLOSE){
+                    console.log(this.oper());
+                }
+                this.eat("BRACKETCLOSE");
+            }
+        }
+    }
+    else {
+        this.error("The if statements have not '( '");
+    }
+};
+Interpreter.prototype.while = function (first_argument) {
+    // body...
+    this.eat(WHILE);
+    if (this.current_token.type===PARENTOPEN){
+        var statementPosition = this.pos;
+        while (this.parenthesis()){
+            if (PARENTESHIS.length !== 0){
+                this.error("The if statement has no ')'");
+            }else{
+                this.eat("BRACKETOPEN");
+
+                while (this.current_token.type !== BRACKETCLOSE){
+                    console.log(this.oper());
+                    console.log(this.current_char);
+                }
+                this.pos= statementPosition;
+                this.eat("BRACKETCLOSE");
+            }
+        }
+    }
+    else {
+        this.error("The if statements have not '( '");
+    }
+};
+interpreter.prototype.for = function (){
+    this.eat(FOR);
+    if (this.current_token.type===PARENTOPEN){
+        var statementPosition = this.pos;
+        while (this.parenthesis()){
+            if (PARENTESHIS.length !== 0){
+                this.error("The if statement has no ')'");
+            }else{
+                this.eat("BRACKETOPEN");
+
+                while (this.current_token.type !== BRACKETCLOSE){
+                    console.log(this.oper());
+                    console.log(this.current_char);
+                }
+                this.pos= statementPosition;
+                this.eat("BRACKETCLOSE");
+            }
+        }
+    }
+    else {
+        this.error("The if statements have not '( '");
+    }
+}
 Interpreter.prototype.expr = function (){
     //expr -> INTEGER PLUS INTEGER
     //set current token to the first token taken from the input
@@ -260,7 +411,9 @@ Interpreter.prototype.expr = function (){
     if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER){
         return this.oper();
     } else if (this.current_token.type === IF) {
-        console.log(this.current_char);
+        this.constm();
+    }else if (this.current_token.type === WHILE){
+        return this.while();
     }
 };
 
