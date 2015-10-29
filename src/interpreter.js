@@ -302,7 +302,7 @@ Interpreter.prototype.superterm = function () {
     var result;
     if (this.current_token.type === PARENTOPEN){
         return this.parenthesis();
-    }else if (this.current_token.type === INTEGER){
+    }else if (this.current_token.type === INTEGER || this.current_token.type === VAR){
         result = this.term();
     }
     while ( [POWER].indexOf(this.current_token.type) !== -1){
@@ -327,6 +327,7 @@ Interpreter.prototype.factor = function () {
    }
    if(this.current_token.type === VAR){
       var token_var = token.value;
+      this.advance();
       this.eat(VAR);
       return token_var;
    }
@@ -346,7 +347,7 @@ Interpreter.prototype.oper = function () {
     var result;
     if (this.current_token.type === PARENTOPEN){
         result = this.parenthesis();
-    }else if (this.current_token.type === INTEGER){
+    }else if (this.current_token.type === INTEGER || this.current_token.type === VAR){
         result = this.superterm();
     }
     while ([PLUS,MINUS,PARENTCLOSE].indexOf(this.current_token.type) !== -1 ){
