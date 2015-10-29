@@ -15,6 +15,7 @@ var MODULE = "MODULE";
 var POWER = "POWER";
 var EOF = "EOF";
 var PARENTESHIS = [];
+var IF="IF";
 
 
 /*The motherfucking interpreter*/
@@ -34,8 +35,12 @@ Interpreter.prototype.error= function (message){
 };
 
 //Advances the this.pos pointer and set the this.current_char variable
-Interpreter.prototype.advance= function(){
-    this.pos += 1;
+Interpreter.prototype.advance= function(steps){
+    if (steps !== undefined){
+        this.pos+=steps;
+    }else{
+        this.pos += 1;
+    }
     if (this.pos > this.text.length - 1) {
         this.current_char = undefined;
     } else {
@@ -108,6 +113,10 @@ Interpreter.prototype.tokenizer= function (){
         if (this.current_char === "^") {
             this.advance();
             return new Token(POWER,"^");
+        }
+        if (this.text.substr(this.pos,2)==="if"){
+            this.advance(2);
+            return new Token(IF,"if");
         }
 
         this.error("Error Tokenizing the function");
@@ -250,6 +259,8 @@ Interpreter.prototype.expr = function (){
 
     if (this.current_token.type === PARENTOPEN || this.current_token.type === INTEGER){
         return this.oper();
+    } else if (this.current_token.type === IF) {
+        console.log(this.current_char);
     }
 };
 
