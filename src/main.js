@@ -1,6 +1,8 @@
 var Interpreter = require("./interpreter.js");
 var readline = require("readline");
 var colors = require("colors");
+var fs = require("fs");
+
 colors.setTheme({
   silly: 'rainbow',
   input: 'grey',
@@ -21,10 +23,16 @@ var rl= readline.createInterface({
     output: process.stdout
 });
 rl.setPrompt("Interpreter.js>");
-rl.prompt();
-rl.on("line", function (line){
-    var interpreter = new Interpreter(line);
-    var result = interpreter.expr();
-    console.log(result);
-    rl.prompt();
-});
+var content= fs.readFileSync("./src/test/test.txt","utf8");
+var interpreter = new Interpreter(content);
+interpreter.expr();
+
+
+// rl.prompt();
+//
+// rl.on("line", function (line){
+//     var interpreter = new Interpreter(line);
+//     var result = interpreter.expr();
+//     console.log(result);
+//     rl.prompt();
+// });
