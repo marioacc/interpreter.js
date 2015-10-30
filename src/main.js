@@ -23,16 +23,16 @@ var rl= readline.createInterface({
     output: process.stdout
 });
 rl.setPrompt("Interpreter.js>");
-var content= fs.readFileSync("./src/test/test.txt","utf8");
-var interpreter = new Interpreter(content);
-interpreter.expr();
+//var content= fs.readFileSync("../src/test/test.txt","utf8");
+//var interpreter = new Interpreter(content);
+//interpreter.expr();
 
 
-// rl.prompt();
-//
-// rl.on("line", function (line){
-//     var interpreter = new Interpreter(line);
-//     var result = interpreter.expr();
-//     console.log(result);
-//     rl.prompt();
-// });
+ rl.prompt();
+
+ rl.on("line", function (line){
+     var interpreter = new Interpreter(line);
+     var result = interpreter.expr();
+     console.log(result);
+     rl.prompt();
+ });

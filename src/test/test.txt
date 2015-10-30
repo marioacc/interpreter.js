@@ -1,3 +1,1 @@
-if (0<1){
-    1>0;
-}
+func carla { var x= 3; return;} carla();
