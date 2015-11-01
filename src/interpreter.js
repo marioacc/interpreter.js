@@ -2,6 +2,7 @@
 var Token = require("./token.js");
 var Exception = require ("./exceptions.js");
 var variable = require ("./variable.js");
+var function_var = require ("./function.js");
 
 var INTEGER = "INTEGER";
 var PLUS = "PLUS";
@@ -32,16 +33,27 @@ var VARASS = "VARASS";
 var VARDEF = "VARDEF";
 var VAR = "VAR";
 var END_STATEMENT= "END_STATEMENT";
+var FUNCDEF = "FUNCDEF";
+var FUNCCALL = "FUNCCALL";
+var RETURN = "RETURN";
 var PARENTESHIS = []; //parenteSHIS? jajaja
-//variables super awsome stack
+//variables and super awsome stack
 var varstack= new Array();
+//CONSTANTES
+var e = new variable('e', 2.73);
+var p = new variable('p', 3.141592);
+varstack.push(e);
+varstack.push(p);
+/*******************/
+var funcstack = new Array();
+var process_stack = [[]];
 //RESERVED DICTTIONARIES
 var var_reserved = ["=", "var"];
 var cs_reserved = ["if", "else", "while", "for"];
 var RESERVED = [var_reserved,cs_reserved];
-
-
-
+//VARIABLES FOR funccalls
+var pos_on_funccall;
+var current_char_on_funccall;
 /*The motherfucking interpreter*/
 var Interpreter = function (text) {
     "use strict";
@@ -99,9 +111,8 @@ Interpreter.prototype.vardef = function() {
             varstack.push(this_new_var);
             this.advance();
             this.varass(this_new_var.name);
-            console.log("New variable: " + this_new_var.name+ "created successfully");
             return this_new_var.name;
-
+            //console.log("New variable: " + this_new_var.name+ "created successfully")
          }else {this.error("You used a reserved word, dont be that guy plz: Line 76");}
       }
       variable_name += this.current_char;
@@ -117,7 +128,7 @@ Interpreter.prototype.vardef = function() {
       varstack.push(this_new_var);
       this.eat(VARDEF);
 
-      console.log("New variable: " + this_new_var.name+ "created successfully");
+      //console.log("New variable: " + this_new_var.name+ "created successfully");
   }
 };
 //Read variable assigination
@@ -180,6 +191,83 @@ Interpreter.prototype.isOnVarstack = function (varname) {
    }
    return false;
 };
+//Look for already declared functions on the funcstack and return if exists,
+Interpreter.prototype.isOnFuncstack = function (funcname) {
+   for (var i = 0, len = funcstack.length; i < len; i++) {
+      if(funcstack[i].name.indexOf(funcname)){
+         return true;
+      }
+   }
+   return false;
+};
+/*Function definitions*/
+Interpreter.prototype.funcdef= function(){
+   //console.log("funcdef entered");
+   var func_name = "";
+   while(this.current_char !== "{" && this.current_char !== undefined){
+      if(this.current_char === " "){ this.skipWhitespace(); continue;}
+      func_name += this.current_char;
+      this.advance();
+      //console.log("POSITION: " + this.pos + "CHAR AT POS: " +this.current_char);
+   }
+   this.advance();
+   //console.log("POSITION: " + this.pos + "CHAR AT POS: " +this.current_char);
+   func_name.trim();
+   //console.log(func_name);
+   //name, beggining, cur_char,cur_token,text
+   var new_func =new function_var(func_name, this.pos, this.text, this.findEnd());
+   //console.log("POSITION: " + this.pos + "CHAR AT POS: " +this.current_char);
+   //console.log (new_func.toString());
+   funcstack.push(new_func);
+   this.eat(FUNCDEF);
+};
+/*Function call handler*/
+Interpreter.prototype.funccall = function() {
+   var funcname= "";
+   while (this.current_char !== "(" && this.current_char !== undefined){
+      if(this.current_char === " "){this.skipWhitespace();continue;}
+      funcname += this.current_char;
+      this.advance();
+   }
+   while(this.current_char !== ";" && this.current_char !== undefined){
+      if(this.current_char === " ") {this.skipWhitespace();continue;}
+      this.advance();
+   }
+   pos_on_funccall = this.pos;
+   current_char_on_funccall = this.current_char;
+   var func_called;
+    for (var i = 0, len = funcstack.length; i < len; i++) {
+      if(funcstack[i].name === funcname){
+         func_called = funcstack[i];
+      }
+   }
+   process_stack.push([func_called,pos_on_funccall]);
+   this.pos = func_called.beggining;
+   this.current_char = this.text[this.pos];
+   this.eat(FUNCCALL);
+};
+/*Function end handler*/
+Interpreter.prototype.return = function (){
+   this.advance();
+   var pos = process_stack.pop()
+   this.pos = pos[1];
+   this.current_char = this.text[this.pos];
+   this.eat (RETURN);
+};
+Interpreter.prototype.findEnd = function() {
+   //console.log("find end entered");
+   //console.log("POSITION: " + this.pos + "CHAR AT POS: " +this.current_char);
+   while(this.text.substr(this.pos,6)!=="return" || this.current_char === " "){
+      //console.log("POSITION: " + this.pos + "CHAR AT POS: " +this.current_char);
+      //var substring = this.text.substr(this.pos,6);
+      //console.log(substring);
+      this.advance();
+   }
+   this.advance(8);
+   //console.log("find end finished");
+   //console.log("POSITION: " + this.pos + "CHAR AT POS: " +this.current_char);
+   return this.pos;
+};
 //Lexical Analyzer
 Interpreter.prototype.tokenizer= function (){
     "use strict";
@@ -188,9 +276,11 @@ Interpreter.prototype.tokenizer= function (){
     while (this.current_char !== undefined) {
 
          var regex_varass = /[a-z]\S*=/;
-         var substring = this.text.substr(this.pos, 3);
          var isRegex = regex_varass.test(this.text.substr(this.pos,3));
-
+         var regex_funccall = /[A-Za-z]+\(\);/;
+         var isRegexFunc = regex_funccall.test(this.text.substr(this.pos,15));
+         var substring_func = (this.text.substr(this.pos,15));
+       //console.log(substring_func);
        if(this.current_char === ";"){
            this.advance();
            return new Token(END_STATEMENT, ";");
@@ -278,10 +368,21 @@ Interpreter.prototype.tokenizer= function (){
             this.advance(3);
             return new Token(FOR, "for");
         }
+
         else if (this.isOnVarstack(this.current_char) && !isRegex){
             return new Token(VAR, this.getVarValue());
         }
 
+        if (this.text.substr(this.pos,4)==="func"){
+            this.advance(4);
+            return new Token(FUNCDEF,"funcdef");
+        }
+       if (isRegexFunc && this.isOnFuncstack(this.text.substr(this.pos,15))){
+            return new Token(FUNCCALL,"funccall");
+        }
+       if (this.text.substr(this.pos,6)=== "return"){
+         return new Token(RETURN);
+       }
         this.error("Error Tokenizing the function. The this.current_char is "+this.current_char);
     }
     return new Token(EOF, undefined);
@@ -453,7 +554,6 @@ Interpreter.prototype.constm = function(){
     if (this.current_token.type===PARENTOPEN){
         var statement = this.parenthesis();
         if (statement){
-            console.log(this.current_token);
             this.eat(BRACKETOPEN);
             if (PARENTESHIS.length !== 0){
                 this.error("The if statement has no ')'");
@@ -466,7 +566,7 @@ Interpreter.prototype.constm = function(){
                     }else if (this.current_token.type === VARDEF) {
                         this.vardef();
                         this.eat(END_STATEMENT);
-                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN) {
+                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN || this.current_token.type === VAR) {
                         console.log(this.oper());
                         this.eat(END_STATEMENT);
                     }else if (this.current_token.type === WHILE){
@@ -497,6 +597,7 @@ Interpreter.prototype.constm = function(){
                     }
                 }
                 this.eat(BRACKETCLOSE);
+
             }
         }else{
             this.eat(BRACKETOPEN);
@@ -507,14 +608,10 @@ Interpreter.prototype.constm = function(){
             this.eat(BRACKETCLOSE);
             return;
         }
-
-
-    }
-
-    else {
-        this.error("The if statements have not '( '");
     }
 };
+
+
 Interpreter.prototype.while = function (first_argument) {
     // body...
     this.eat(WHILE);
@@ -528,6 +625,7 @@ Interpreter.prototype.while = function (first_argument) {
             if (PARENTESHIS.length !== 0){
                 this.error("The while statement has no ')'");
             }else{
+
                 this.eat(BRACKETOPEN);
                 while (this.current_token.type !== BRACKETCLOSE){
                     if (this.current_token.type === VARASS){
@@ -536,16 +634,18 @@ Interpreter.prototype.while = function (first_argument) {
                     }else if (this.current_token.type === VARDEF) {
                         this.vardef();
                         this.eat(END_STATEMENT);
-                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN) {
+                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN || this.current_token.type ===VAR) {
                         console.log(this.oper());
                         this.eat(END_STATEMENT);
                     }else if (this.current_token.type === WHILE){
                         this.while();
                     }else if (this.current_token.type ===IF) {
                         this.constm();
+                    }else if (this.current_token.type === FOR) {
+                        this.constm();
                     }
                 }
-                this.eat("BRACKETCLOSE");
+                this.eat(BRACKETCLOSE);
                 this.pos= statementPosition;
                 this.current_token= statementToken;
                 this.current_char= statementChar;
@@ -568,6 +668,7 @@ Interpreter.prototype.while = function (first_argument) {
     }
 };
 Interpreter.prototype.for = function (){
+    //console.log("asdasdasd"+this.current_token.type);
     this.eat(FOR);
     if (this.current_token.type===PARENTOPEN){
         var parentesis = [];
@@ -579,7 +680,8 @@ Interpreter.prototype.for = function (){
         var executionPosition;
         var executionToken;
         var executionChar ;
-        console.log(this.current_token);
+
+
         while (this.oper()){
 
             this.eat(END_STATEMENT);
@@ -604,7 +706,7 @@ Interpreter.prototype.for = function (){
                     }else if (this.current_token.type === VARDEF) {
                         this.vardef();
                         this.eat(END_STATEMENT);
-                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN) {
+                    }else if (this.current_token.type === INTEGER || this.current_token.type=== PARENTOPEN || this.current_token.type=== VAR) {
                         console.log(this.oper());
                         this.eat(END_STATEMENT);
                     }else if (this.current_token.type === WHILE){
@@ -657,6 +759,15 @@ Interpreter.prototype.expr = function (){
         }else if(this.current_token.type === VARASS){
           this.varass(undefined);
           this.eat(END_STATEMENT);
+        }else if (this.current_token.type === FUNCDEF){
+         this.funcdef();
+        }else if(this.current_token.type === RETURN){
+         this.return();
+        }else if(this.current_token.type === FUNCCALL){
+         this.funccall();
+        }else if(this.current_token.type === END_STATEMENT){
+           this.advance();
+            this.eat(END_STATEMENT);
         }
     }
 };

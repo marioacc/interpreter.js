@@ -1,0 +1,5 @@
+var x = 0;
+func prueba{
+    x+1;
+    return;}
+prueba();
